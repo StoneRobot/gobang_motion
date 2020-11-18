@@ -1,0 +1,8 @@
+prefix=/usr/local
+
+Name: gobang_motion
+Description: Description of gobang_motion
+Version: 0.0.0
+Cflags: -I${prefix}/include
+Libs: -L${prefix}/lib 
+Requires: 

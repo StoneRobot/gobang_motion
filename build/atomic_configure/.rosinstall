@@ -1,0 +1,2 @@
+- setup-file:
+    local-name: /home/fshs/catkin_ws/src/gobang_motion/build/devel/setup.sh
