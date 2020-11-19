@@ -10,6 +10,8 @@
 #include "proxy/ProxyVm.h"
 #include "proxy/ProxyVar.h"
 
+#include "gomoku_vision/GetPickPoint.h"
+
 using namespace std;
 using namespace Hsc3::Comm;
 using namespace Hsc3::Proxy;
@@ -55,7 +57,7 @@ public:
      * @param
      * @return 0为拾取成功
     */
-    int setPickPoint(int x, int y);
+    int setPickPoint(double x, double y);
 
     /**
      * @brief 捡起棋子
@@ -75,5 +77,7 @@ public:
      * @return 0为成功
     */
     int placeChess(bool block=true);
+
+    int motion(int type, bool block=true);
 
 };
