@@ -11,6 +11,7 @@
 #include "proxy/ProxyVar.h"
 
 #include "gomoku_vision/GetPickPoint.h"
+#include "gobang_motion/RobotMove.h"
 
 using namespace std;
 using namespace Hsc3::Comm;
@@ -59,11 +60,11 @@ public:
     */
     int setPickPoint(double x, double y);
 
-    /**
-     * @brief 捡起棋子
-     * @return 0为成功
-    */
-    int pickChess(bool block=true);
+    // /**
+    //  * @brief 捡起棋子
+    //  * @return 0为成功
+    // */
+    // int pickChess(bool block=true);
 
     /**
      * @brief 设置放置棋子的在棋盘上的索引
@@ -72,12 +73,18 @@ public:
     */
     int setChessboardIndex(int row, int col);
 
-    /**
-     * @brief 放下棋子
-     * @return 0为成功
-    */
-    int placeChess(bool block=true);
+    // /**
+    //  * @brief 放下棋子
+    //  * @return 0为成功
+    // */
+    // int placeChess(bool block=true);
 
+    /**
+     * @brief 控制机器人做示教器编写的程序
+     * @param type 1 放棋子, 2 抓棋子, 3 去检测点
+     * @param block 是否阻塞
+     * @return 成功返回0
+    */
     int motion(int type, bool block=true);
 
 };

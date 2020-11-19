@@ -1,6 +1,4 @@
 #include "gobang_motion/gobang_motion.h"
-#include <ros/ros.h>
-#include <gobang_motion/RobotMove.h>
 
 GobangMotion *g;
 
@@ -35,16 +33,13 @@ int GobangMotion::connect()
 {
     static int i = 0;
     cout << "IP: " << robotIp_ << endl;
-    int ret = commapi->connect(robotIp_, (uint16_t)robotPort_);
-    if(commapi->isConnected())
-    {
-        i = 0;
-        return 0;
-    }
-    if (ret != 0)
+    commapi->connect(robotIp_, (uint16_t)robotPort_);
+    bool ret;
+    ret = commapi->isConnected();
+    if (!ret)
     {
         cout << "机器人连接失败, return value: " << ret << endl;
-        if(i < 3)
+        if (i < 3)
         {
             i++;
             connect();
@@ -112,24 +107,24 @@ int GobangMotion::setChessboardIndex(int row, int col)
     }
 }
 
-int GobangMotion::placeChess(bool block)
-{
-    connect();
-    if (setR(motionCtrReg, 1))
-    {
-        while (getActionState() != 0 && block && ros::ok())
-        {
-            sleep(1);
-        }
-        cout << "设置放置棋子成功" << endl;
-        return 0;
-    }
-    else
-    {
-        cout << "设置放置棋子失败" << endl;
-        return -1;
-    }
-}
+// int GobangMotion::placeChess(bool block)
+// {
+//     connect();
+//     if (setR(motionCtrReg, 1))
+//     {
+//         while (getActionState() != 0 && block && ros::ok())
+//         {
+//             sleep(1);
+//         }
+//         cout << "设置放置棋子成功" << endl;
+//         return 0;
+//     }
+//     else
+//     {
+//         cout << "设置放置棋子失败" << endl;
+//         return -1;
+//     }
+// }
 
 bool GobangMotion::setR(int index, double val)
 {
@@ -184,24 +179,24 @@ int GobangMotion::setPickPoint(double x, double y)
     return 0;
 }
 
-int GobangMotion::pickChess(bool block)
-{
-    connect();
-    if (setR(motionCtrReg, 2))
-    {
-        while (getActionState() != 0 && block && ros::ok())
-        {
-            sleep(1);
-        }
-        cout << "拾取棋子成功" << endl;
-        return 0;
-    }
-    else
-    {
-        cout << "拾取棋子失败" << endl;
-        return -1;
-    }
-}
+// int GobangMotion::pickChess(bool block)
+// {
+//     connect();
+//     if (setR(motionCtrReg, 2))
+//     {
+//         while (getActionState() != 0 && block && ros::ok())
+//         {
+//             sleep(1);
+//         }
+//         cout << "拾取棋子成功" << endl;
+//         return 0;
+//     }
+//     else
+//     {
+//         cout << "拾取棋子失败" << endl;
+//         return -1;
+//     }
+// }
 
 int GobangMotion::getActionState()
 {
@@ -231,13 +226,27 @@ int GobangMotion::motion(int type, bool block)
 
 bool callback(gobang_motion::RobotMove::Request &req, gobang_motion::RobotMove::Response &rep)
 {
-    if (g->pickChess(true) == 0)
+    if (g->motion(3) == 0)
     {
-        if (g->setChessboardIndex(req.row, req.col) == 0)
-            ;
-        g->placeChess();
+        gomoku_vision::GetPickPoint srv;
+        if (pick_point_client.call(srv))
+        {
+            double x, y;
+            x = srv.response.pick_x;
+            y = srv.response.pick_y;
+            cout << "x: " << x << "y: " << y << endl;
+            if (g->setPickPoint(x, y) == 0)
+            {
+                sleep(1);
+                if (g->motion(2) == 0)
+                {
+                    if (g->setChessboardIndex(req.row, req.col) == 0)
+                        g->motion(1);
+                }
+            }
+        }
     }
-    return true;
+    return true
 }
 
 int main(int argc, char **argv)
@@ -255,24 +264,29 @@ int main(int argc, char **argv)
         cout << "加载程序失败" << endl;
         return -1;
     }
-    cout << "按下\'enter\'继续" << endl;
-    // cin.ignore();
-    cin.ignore();
-    g->motion(3);
-    sleep(2);
-    gomoku_vision::GetPickPoint srv;
-    if (pick_point_client.call(srv))
+    while (getActionState() != 0 && ros::ok())
     {
-        double x, y;
-        x = srv.response.pick_x;
-        y = srv.response.pick_y;
-        cout << "x: " << x << "y: " << y << endl;
-        if (g->setPickPoint(x, y) == 0)
-        {
-            sleep(1);
-            g->motion(2);
-        }
+        sleep(1);
     }
+    // ros::spin();
+    // cout << "按下\'enter\'继续" << endl;
+    // // cin.ignore();
+    // cin.ignore();
+    // g->motion(3);
+    // sleep(2);
+    // gomoku_vision::GetPickPoint srv;
+    // if (pick_point_client.call(srv))
+    // {
+    //     double x, y;
+    //     x = srv.response.pick_x;
+    //     y = srv.response.pick_y;
+    //     cout << "x: " << x << "y: " << y << endl;
+    //     if (g->setPickPoint(x, y) == 0)
+    //     {
+    //         sleep(1);
+    //         g->motion(2);
+    //     }
+    // }
     g->unloadProgram("GOBANG.PRG");
     return 0;
 }
