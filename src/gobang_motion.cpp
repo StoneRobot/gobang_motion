@@ -1,6 +1,7 @@
 #include "gobang_motion/gobang_motion.h"
 
 GobangMotion *g;
+ros::ServiceClient *pick_point_client;
 
 GobangMotion::GobangMotion(ros::NodeHandle *n, string robotIP, int robotPort)
 {
@@ -31,10 +32,12 @@ GobangMotion::~GobangMotion()
 
 int GobangMotion::connect()
 {
-    static int i = 0;
-    cout << "IP: " << robotIp_ << endl;
-    commapi->connect(robotIp_, (uint16_t)robotPort_);
     bool ret;
+    static int i = 0;
+    ret = commapi->isConnected();
+    cout << "IP: " << robotIp_ << endl;
+    if(!ret)
+        commapi->connect(robotIp_, (uint16_t)robotPort_);
     ret = commapi->isConnected();
     if (!ret)
     {
@@ -60,7 +63,8 @@ int GobangMotion::startProgram(const std::string &path, const std::string &fileN
     cout << "program: " << fileName << endl;
     if (proVm->load(path, fileName) == 0)
     {
-        sleep(2);
+        // sleep(2);
+        ros::Duration(1).sleep();
         if (proVm->start(fileName) == 0)
         {
             cout << "程序开始成功" << endl;
@@ -129,7 +133,8 @@ int GobangMotion::setChessboardIndex(int row, int col)
 bool GobangMotion::setR(int index, double val)
 {
     proVar->setR(index, val);
-    sleep(2);
+    // sleep(1);
+    ros::Duration(0.5).sleep();
     double getVal;
     proVar->getR(index, getVal);
     cout << "R寄存器: " << index << ", value: " << val << endl;
@@ -150,7 +155,7 @@ int GobangMotion::setLR(int8_t gpId, int32_t index, const LocPos &pos)
 {
     proVar->setLR(gpId, index, pos);
     LocPos getPose;
-    sleep(1);
+    ros::Duration(0.5).sleep();
     proVar->getLR(gpId, index, getPose);
     cout << "L寄存器: " << index << endl;
     for (int i = 0; i < pos.vecPos.size(); i++)
@@ -212,7 +217,8 @@ int GobangMotion::motion(int type, bool block)
     {
         while (getActionState() != 0 && block && ros::ok())
         {
-            sleep(1);
+            // sleep(1);
+            ros::Duration(0.5).sleep();
         }
         cout << "运动成功" << endl;
         return 0;
@@ -229,7 +235,8 @@ bool callback(gobang_motion::RobotMove::Request &req, gobang_motion::RobotMove::
     if (g->motion(3) == 0)
     {
         gomoku_vision::GetPickPoint srv;
-        if (pick_point_client.call(srv))
+        ros::Duration(1).sleep();
+        if (pick_point_client->call(srv))
         {
             double x, y;
             x = srv.response.pick_x;
@@ -237,7 +244,8 @@ bool callback(gobang_motion::RobotMove::Request &req, gobang_motion::RobotMove::
             cout << "x: " << x << "y: " << y << endl;
             if (g->setPickPoint(x, y) == 0)
             {
-                sleep(1);
+                // sleep(1);
+                ros::Duration(0.5).sleep();
                 if (g->motion(2) == 0)
                 {
                     if (g->setChessboardIndex(req.row, req.col) == 0)
@@ -246,7 +254,7 @@ bool callback(gobang_motion::RobotMove::Request &req, gobang_motion::RobotMove::
             }
         }
     }
-    return true
+    return true;
 }
 
 int main(int argc, char **argv)
@@ -256,7 +264,8 @@ int main(int argc, char **argv)
     ros::AsyncSpinner spin(2);
     spin.start();
     ros::ServiceServer ser = nh.advertiseService("/robot_move_point", callback);
-    ros::ServiceClient pick_point_client = nh.serviceClient<gomoku_vision::GetPickPoint>("/get_pick_point");
+    ros::ServiceClient pick_point_client_ = nh.serviceClient<gomoku_vision::GetPickPoint>("/get_pick_point");
+    pick_point_client = &pick_point_client_;
     g = new GobangMotion(&nh, "10.10.56.214", 23234);
     // g.setChessboardIndex(1, 2);
     if (g->startProgram("./script", "GOBANG.PRG") != 0)
@@ -264,10 +273,20 @@ int main(int argc, char **argv)
         cout << "加载程序失败" << endl;
         return -1;
     }
-    while (getActionState() != 0 && ros::ok())
+    while (g->getActionState() != 0 && ros::ok())
     {
-        sleep(1);
+        // sleep(1);
+        ros::Duration(1).sleep();
     }
+    // for (int i = 3; i < 13 && ros::ok(); i++)
+    // {
+    //     for (int j = 3; j < 13 && ros::ok(); j++)
+    //     {
+    //         cout << "i: " << i << "j: " << j << endl;
+    //         if (g->setChessboardIndex(i, j) == 0)
+    //             g->motion(1);
+    //     }
+    // }
     // ros::spin();
     // cout << "按下\'enter\'继续" << endl;
     // // cin.ignore();
@@ -287,6 +306,7 @@ int main(int argc, char **argv)
     //         g->motion(2);
     //     }
     // }
+    ros::waitForShutdown();
     g->unloadProgram("GOBANG.PRG");
     return 0;
 }
